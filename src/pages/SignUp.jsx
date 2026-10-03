@@ -5,6 +5,7 @@ import { Utensils, Mail, Lock, User, ArrowRight, Store, User as UserIcon, Phone,
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { authAPI } from '../api/auth';
+import { auth, googleProvider, signInWithPopup } from '../config/firebase';
 
 const SignUpSchema = Yup.object().shape({
   fullName: Yup.string()
@@ -15,7 +16,7 @@ const SignUpSchema = Yup.object().shape({
     .email('Invalid email')
     .required('Required'),
   mobile: Yup.string()
-    .matches(/^[0-9]{10}$/, 'Must be 10 digits')
+    .matches(/^[0-9]{10}$/, 'Mobile number must be exactly 10 digits')
     .required('Required'),
   password: Yup.string()
     .min(6, 'Min 6 characters')
@@ -28,6 +29,25 @@ const SignUpSchema = Yup.object().shape({
 const SignUp = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      await authAPI.googleAuth({
+        fullName: user.displayName,
+        email: user.email,
+        mobile: user.phoneNumber || '',
+        role: formik.values.role || 'user'
+      });
+      alert('Sign Up with Google Successful!');
+      navigate('/');
+    } catch (err) {
+      console.error("Google Sign Up Error: ", err);
+      setError(err.response?.data?.message || err.message || 'Google Sign-Up failed');
+    }
+  };
 
   const formik = useFormik({
     initialValues: {
@@ -123,8 +143,14 @@ const SignUp = () => {
                   <input 
                     type="tel" 
                     name="mobile"
+                    maxLength={10}
                     value={formik.values.mobile}
-                    onChange={formik.handleChange}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val.length <= 10) {
+                        formik.setFieldValue('mobile', val);
+                      }
+                    }}
                     onBlur={formik.handleBlur}
                     className={`w-full pl-9 pr-3 py-2 text-sm bg-neutral-900/50 border rounded-xl focus:ring-2 focus:border-transparent outline-none text-white transition-all placeholder:text-neutral-600 ${formik.touched.mobile && formik.errors.mobile ? 'border-red-500 focus:ring-red-500' : 'border-neutral-700 focus:ring-red-500'}`}
                     placeholder="9876543210"
@@ -232,9 +258,10 @@ const SignUp = () => {
 
           <motion.button
             type="button"
+            onClick={handleGoogleSignIn}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full py-2.5 px-4 bg-white text-neutral-900 text-sm font-semibold rounded-xl shadow flex items-center justify-center gap-3 mt-3 hover:bg-neutral-100 transition-colors"
+            className="w-full py-2.5 px-4 bg-white text-neutral-900 text-sm font-semibold rounded-xl shadow flex items-center justify-center gap-3 mt-3 hover:bg-neutral-100 transition-colors cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />

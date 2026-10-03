@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Utensils, Mail, Lock, ArrowRight, ArrowLeft, KeyRound } from 'lucide-react';
+import { authAPI } from '../api/auth';
 
 const ForgotPassword = () => {
   const [step, setStep] = useState(1); // 1 = Email, 2 = OTP & New Password
@@ -10,27 +11,44 @@ const ForgotPassword = () => {
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const navigate = useNavigate();
+  const [errorMsg, setErrorMsg] = useState('');
+
   const handleSendEmail = async (e) => {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
-    // TODO: Call your backend API here to send OTP to `email`
-    setTimeout(() => {
-      setLoading(false);
+    setErrorMsg('');
+    try {
+      await authAPI.sendOtp(email);
       setStep(2); // Move to OTP step after successful email send
-    }, 1000);
+    } catch (error) {
+      console.error("Send OTP failed", error);
+      setErrorMsg(error.response?.data?.message || 'Failed to send OTP. Try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (!otp || !newPassword) return;
     setLoading(true);
-    // TODO: Call your backend API here to verify OTP and update password
-    setTimeout(() => {
-      setLoading(false);
+    setErrorMsg('');
+    try {
+      // First verify OTP
+      await authAPI.verifyOtp({ email, otp });
+      // Then reset password
+      await authAPI.resetPassword({ email, newPassword });
+      
       alert('Password has been reset successfully! You can now sign in.');
-      window.location.href = '/signin';
-    }, 1000);
+      navigate('/signin');
+    } catch (error) {
+      console.error("Reset Password failed", error);
+      setErrorMsg(error.response?.data?.message || 'Failed to reset password. Try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,6 +84,9 @@ const ForgotPassword = () => {
             <p className="text-sm text-neutral-400">
               {step === 1 ? "Enter your email to receive an OTP" : `Enter the OTP sent to ${email}`}
             </p>
+            {errorMsg && (
+              <p className="text-sm text-red-500 mt-2">{errorMsg}</p>
+            )}
           </div>
 
           <AnimatePresence mode="wait">

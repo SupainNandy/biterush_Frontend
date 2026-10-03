@@ -5,6 +5,7 @@ import { Utensils, Mail, Lock, ArrowRight } from 'lucide-react';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { authAPI } from '../api/auth';
+import { auth, googleProvider, signInWithPopup } from '../config/firebase';
 
 const SignInSchema = Yup.object().shape({
   email: Yup.string()
@@ -18,6 +19,25 @@ const SignInSchema = Yup.object().shape({
 const SignIn = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      await authAPI.googleAuth({
+        fullName: user.displayName,
+        email: user.email,
+        mobile: user.phoneNumber || '',
+        role: 'user'
+      });
+      alert('Sign In with Google Successful!');
+      navigate('/');
+    } catch (err) {
+      console.error("Google Sign In Error: ", err);
+      setError(err.response?.data?.message || err.message || 'Google Sign-In failed');
+    }
+  };
 
   const formik = useFormik({
     initialValues: {
@@ -148,9 +168,10 @@ const SignIn = () => {
 
           <motion.button
             type="button"
+            onClick={handleGoogleSignIn}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full py-2.5 px-4 bg-white text-neutral-900 text-sm font-semibold rounded-xl shadow flex items-center justify-center gap-3 mt-4 hover:bg-neutral-100 transition-colors"
+            className="w-full py-2.5 px-4 bg-white text-neutral-900 text-sm font-semibold rounded-xl shadow flex items-center justify-center gap-3 mt-4 hover:bg-neutral-100 transition-colors cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
